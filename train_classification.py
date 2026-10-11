@@ -28,7 +28,7 @@ import matplotlib.pyplot as plt
 try:
     from config_classification import config
 except ImportError:
-    print("找不到 config_classification.py，請先跑 merge_datasets.py")
+    print("找不到 config_classification.py，請先確認 config_classification.py 在專案資料夾")
     exit(1)
 
 CLASS_NAMES = config.CLASS_NAMES
@@ -64,7 +64,7 @@ class DogSkinClassificationDataset(Dataset):
             if config.RANDOM_CROP:
                 aug_list.append(
                     transforms.RandomResizedCrop(
-                        config.IMG_SIZE, scale=(0.7, 1.0), ratio=(0.85, 1.15)
+                        config.IMG_SIZE, scale=(0.5 if config.STRONG_AUG else 0.7, 1.0), ratio=(0.85, 1.15)
                     )
                 )
             else:
@@ -78,14 +78,20 @@ class DogSkinClassificationDataset(Dataset):
             if config.COLOR_JITTER:
                 aug_list.append(
                     transforms.ColorJitter(
+                        brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1
+                    ) if config.STRONG_AUG else transforms.ColorJitter(
                         brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1
                     )
                 )
+            if config.STRONG_AUG:
+                aug_list.append(transforms.RandomGrayscale(p=0.15))
             aug_list += [
                 transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 1.5)),
                 transforms.ToTensor(),
                 transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
             ]
+            if config.STRONG_AUG:
+                aug_list.append(transforms.RandomErasing(p=0.25, scale=(0.02, 0.15), value="random"))
             return transforms.Compose(aug_list)
         return transforms.Compose([
             transforms.Resize((config.IMG_SIZE, config.IMG_SIZE)),
@@ -107,6 +113,7 @@ class DogSkinClassificationDataset(Dataset):
 def create_model(num_classes, backbone="efficientnet_b0", pretrained=True):
     from torchvision.models import (
         efficientnet_b0, EfficientNet_B0_Weights,
+        efficientnet_b2, EfficientNet_B2_Weights,
         resnet50, ResNet50_Weights,
         mobilenet_v3_small, MobileNet_V3_Small_Weights,
     )
@@ -119,6 +126,14 @@ def create_model(num_classes, backbone="efficientnet_b0", pretrained=True):
         model = efficientnet_b0(weights=w)
         in_features = model.classifier[1].in_features
         # Dropout 加大至 0.4，抑制過擬合
+        model.classifier = nn.Sequential(
+            nn.Dropout(p=0.4, inplace=True),
+            nn.Linear(in_features, num_classes),
+        )
+    elif backbone == "efficientnet_b2":
+        w = EfficientNet_B2_Weights.IMAGENET1K_V1 if pretrained else None
+        model = efficientnet_b2(weights=w)
+        in_features = model.classifier[1].in_features
         model.classifier = nn.Sequential(
             nn.Dropout(p=0.4, inplace=True),
             nn.Linear(in_features, num_classes),
@@ -136,7 +151,7 @@ def set_backbone_trainable(model, backbone, trainable: bool):
     # 凍結/解凍特徵萃取層，分類頭永遠保持可訓練；架構完全不變，只是暫時不更新梯度
     if backbone == "resnet50":
         modules = [m for name, m in model.named_children() if name != "fc"]
-    elif backbone in ("efficientnet_b0", "mobilenet_v3_small"):
+    elif backbone in ("efficientnet_b0", "efficientnet_b2", "mobilenet_v3_small"):
         modules = [model.features]
     else:
         return
@@ -400,7 +415,7 @@ def plot_feature_importance(model, class_names, out_dir, backbone):
     try:
         if backbone == "resnet50":
             w = model.fc.weight.detach().cpu().numpy()
-        elif backbone == "efficientnet_b0":
+        elif backbone in ("efficientnet_b0", "efficientnet_b2"):
             w = model.classifier[1].weight.detach().cpu().numpy()
         elif backbone == "mobilenet_v3_small":
             w = model.classifier[3].weight.detach().cpu().numpy()
@@ -758,7 +773,7 @@ def main():
     config.create_directories()
 
     if not (config.TRAIN_DIR / "train_annotations.json").exists():
-        print("Training data not found. Run merge_datasets.py first.")
+        print("Training data not found. Run: python build_dataset.py")
         return
 
     print("\nLoading data...")

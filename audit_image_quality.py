@@ -6,7 +6,7 @@
 `_jpg.rf.<hash>` 後綴，研判是 Roboflow 專案裡「旋轉增強」後的版本被當成一般圖片，
 連同重新計算過的 bounding box 一起被 merge_datasets.py 收進資料集，而不是乾淨原圖。
 
-這支腳本掃過 merged_data 三個 split 的全部樣本（不只 dermatophytosis），用兩個純像素
+這支腳本掃過 dataset_cc_by 三個 split 的全部樣本（不只 dermatophytosis），用兩個純像素
 啟發式規則標記可疑圖片，輸出清單 + 每類別統計 + 一張 contact sheet 讓人工確認，
 不會刪除或修改任何原始檔案。
 """

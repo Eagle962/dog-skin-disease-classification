@@ -14,7 +14,7 @@ import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 from torchvision.models import (
-    efficientnet_b0, EfficientNet_B0_Weights,
+    efficientnet_b0, EfficientNet_B0_Weights, efficientnet_b2,
     resnet50, ResNet50_Weights,
     mobilenet_v3_small, MobileNet_V3_Small_Weights,
 )
@@ -47,7 +47,10 @@ DEVICE = get_device()
 # ---------- 模型載入 ----------
 
 def build_model(backbone, num_classes):
-    if backbone == "efficientnet_b0":
+    if backbone == "efficientnet_b2":
+        model = efficientnet_b2(weights=None)
+        model.classifier[1] = nn.Linear(model.classifier[1].in_features, num_classes)
+    elif backbone == "efficientnet_b0":
         model = efficientnet_b0(weights=None)
         model.classifier[1] = nn.Linear(model.classifier[1].in_features, num_classes)
     elif backbone == "resnet50":
@@ -91,7 +94,7 @@ class GradCAM:
         self._register_hooks()
 
     def _target_layer(self):
-        if self.backbone == "efficientnet_b0":
+        if self.backbone in ("efficientnet_b0", "efficientnet_b2"):
             return self.model.features[-1]
         elif self.backbone == "resnet50":
             return self.model.layer4[-1]
@@ -266,7 +269,7 @@ def main():
 
     if not config.CLASS_NAMES:
         print("CLASS_NAMES is empty in config_classification.py")
-        print("Run patch_annotations.py first.")
+        print("Run: python patch_annotations.py (checks config vs dataset)")
         sys.exit(1)
 
     model   = load_model(checkpoint)

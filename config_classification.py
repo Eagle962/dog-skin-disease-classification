@@ -1,3 +1,4 @@
+import os
 import torch
 from pathlib import Path
 
@@ -5,16 +6,17 @@ from pathlib import Path
 class Config:
     PROJECT_NAME = "Dog_Skin_Disease_Classification"
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    NUM_WORKERS = 4
+    NUM_WORKERS = int(os.environ.get("WOOF_WORKERS", 4))
     SEED = 42
 
     BASE_DIR  = Path(__file__).parent
-    DATA_DIR  = BASE_DIR / "merged_data"
+    DATA_DIR  = BASE_DIR / "dataset_cc_by"      # 由 build_dataset.py 產生
     TRAIN_DIR = DATA_DIR / "train"
     VAL_DIR   = DATA_DIR / "val"
     TEST_DIR  = DATA_DIR / "test"
 
-    OUTPUT_DIR  = BASE_DIR / "outputs"
+    # 舊的 outputs*/ 是在含未授權來源的舊資料上訓練的，不要覆蓋；新結果放 outputs_cc_by/
+    OUTPUT_DIR  = Path(os.environ.get("WOOF_OUTPUT_DIR", BASE_DIR / "outputs_cc_by"))
     WEIGHTS_DIR = OUTPUT_DIR / "weights"
     LOGS_DIR    = OUTPUT_DIR / "logs"
     RESULTS_DIR = OUTPUT_DIR / "results"
@@ -24,12 +26,12 @@ class Config:
     CLASS_TO_IDX = {'bacterial_dermatosis': 0, 'dermatitis': 1, 'dermatophytosis': 2, 'flea_allergy_dermatitis': 3, 'healthy': 4, 'hypersensitivity_dermatitis': 5, 'mange': 6}
 
     # efficientnet_b0 在中小型資料集通常比 resnet50 穩
-    BACKBONE   = "efficientnet_b0"
+    BACKBONE   = os.environ.get("WOOF_BACKBONE", "efficientnet_b0")   # B2 實驗：efficientnet_b2
     PRETRAINED = True
-    IMG_SIZE   = 224
+    IMG_SIZE   = int(os.environ.get("WOOF_IMG_SIZE", 224))   # B2 實驗：256
 
     BATCH_SIZE    = 32
-    NUM_EPOCHS    = 60
+    NUM_EPOCHS    = int(os.environ.get("WOOF_EPOCHS", 60))   # 冒煙測試可設 WOOF_EPOCHS=1
     LEARNING_RATE = 1e-3
     # 過擬合明顯（train acc 96% vs val acc ~72%），weight_decay 從 1e-3 提高到 2e-3
     WEIGHT_DECAY  = 2e-3
@@ -37,6 +39,9 @@ class Config:
     RANDOM_FLIP     = 0.5
     RANDOM_ROTATION = 15
     COLOR_JITTER    = True
+    # 強化增強：更大的縮放範圍、較強色彩抖動、隨機灰階、隨機擦除，
+    # 降低模型依賴來源特有色調/解析度（各類別與來源高度綁定）的機會
+    STRONG_AUG      = os.environ.get("WOOF_STRONG_AUG", "0") == "1"   # B2 實驗：1
     RANDOM_CROP     = True
 
     LR_SCHEDULER   = "cosine"

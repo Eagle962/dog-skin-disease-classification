@@ -73,7 +73,7 @@ def overlay_heatmap(img, cam, alpha=0.45):
 
 
 def get_target_layer(model, backbone):
-    if backbone in ("efficientnet_b0", "mobilenet_v3_small"):
+    if backbone in ("efficientnet_b0", "efficientnet_b2", "mobilenet_v3_small"):
         return model.features[-1]
     if backbone == "resnet50":
         return model.layer4[-1]

@@ -6,3 +6,8 @@ outputs*/
 old_output/
 *.pth
 *.zip
+dataset_cc_by/
+candidates/
+tasks/
+outputs2.0/
+outputs3.0/
