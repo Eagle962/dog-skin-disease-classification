@@ -17,7 +17,7 @@
 `WOOF_EPOCHS=1 WOOF_OUTPUT_DIR=/tmp/smoke python train_classification.py`
 
 資料來源與授權：`dataset_sources.md`。舊版腳本在 `legacy/`（勿執行）。
-舊的 `outputs/ outputs2.0/ outputs3.0/ old_output/` 是在含未授權來源的舊資料上訓練的結果，不要拿來報告。
+舊的 `outputs/ outputs2.0/ outputs3.0/ old_output/`（在含未授權來源的舊資料上訓練）已於 2026-10-12 刪除，其準確率（92.5%、96.1%）已作廢，不可引用。目前只保留 `outputs_cc_by/`（B0，主模型）與 `outputs_b2/`（B2 對照實驗）。
 
 ## 結果與部署
 - 主模型 EfficientNet-B0 @224（預設設定）：測試 Accuracy 80.16%（TTA，368 筆）。B2 @256 + 強增強為對照實驗（74.73%），設定見 `config_classification.py` 的環境變數（`WOOF_BACKBONE`、`WOOF_IMG_SIZE`、`WOOF_STRONG_AUG`、`WOOF_OUTPUT_DIR`）。
