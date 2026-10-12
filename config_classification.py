@@ -73,7 +73,7 @@ class Config:
     KEEP_BEST_N             = 3
     # early stopping 改監控 val_loss 是否持續惡化（val_loss 在 epoch ~5 後就已經
     # 沒有下降趨勢，比等 weighted F1 停滯更早抓到過擬合），patience 從 15 收緊到 8
-    EARLY_STOPPING_PATIENCE  = 8
+    EARLY_STOPPING_PATIENCE  = int(os.environ.get("WOOF_PATIENCE", 15))   # 新切分上 8 會在 epoch 19 過早停止（66.30%），故放寬為 15
     EARLY_STOPPING_MIN_DELTA = 1e-3
 
     TENSORBOARD_LOG = False

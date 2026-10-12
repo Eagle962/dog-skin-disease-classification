@@ -9,6 +9,10 @@
    標示 dedup_rot 的來源（Roboflow 旋轉擴增）在來源內也去除（含 90 度旋轉比對）。
 4. 剔除旋轉黑邊樣本（has_black_border）。
 5. 近重複/同一來源照片 -> 同一群組 -> 整組分到同一 split；各類別依比例分層。
+   分組比對涵蓋：旋轉 90/180/270、水平/垂直鏡像（8 種方向）、以及 ±3/5/7/10/15° 小角度旋轉
+   （原圖與水平鏡像各一組），pHash 或 dHash 任一近似即視為候選，並雙向比對；且低對比度影像也參與分組（只會讓群組變大、較保守，不影響去重）。
+   2026-10-12：先前版本只比對 0/90/180/270 度，審核發現測試集有約 17% 在訓練集有鏡像或
+   小角度旋轉的副本，故加入上述比對。
 """
 import csv
 import hashlib
@@ -195,6 +199,54 @@ def features(rows):
             np.array(HR, dtype=np.uint64), np.stack(PR))
 
 
+def _variants(im):
+    """分組用的影像變體：8 種方向（旋轉 90 度倍數 x 水平鏡像）+ 原圖與鏡像的 ±3/5/7/10/15 度小角度旋轉。"""
+    out = []
+    for flip in (False, True):
+        base = im.transpose(Image.FLIP_LEFT_RIGHT) if flip else im
+        for ang in (0, 90, 180, 270):
+            out.append(base.rotate(ang, expand=True) if ang else base)
+        for ang in (-15, -10, -7, -5, -3, 3, 5, 7, 10, 15):
+            out.append(base.rotate(ang, expand=False))
+    return out
+
+
+def group_features(rows):
+    """回傳 (H0, P0, HV, PV, D0, DV)：H/D 為 pHash/dHash，P 為 32x32 灰階 z-score，0 為原圖，V 為各變體。"""
+    N = len(rows)
+    H0 = np.zeros(N, dtype=np.uint64)
+    D0 = np.zeros(N, dtype=np.uint64)
+    DV = None
+    P0 = np.zeros((N, 1024), dtype=np.float32)
+    HV, PV = None, None
+    for i, r in enumerate(rows):
+        vs = _variants(r["img"])
+        if HV is None:
+            HV = np.zeros((N, len(vs)), dtype=np.uint64)
+            PV = np.zeros((N, len(vs), 1024), dtype=np.float32)
+            DV = np.zeros((N, len(vs)), dtype=np.uint64)
+        for k, v in enumerate(vs):
+            g = np.asarray(v.convert("L").resize((32, 32)), dtype=np.float32).ravel()
+            PV[i, k] = (g - g.mean()) / max(g.std(), 1e-6)
+            HV[i, k] = int(str(imagehash.phash(v)), 16)
+            DV[i, k] = int(str(imagehash.dhash(v)), 16)
+        H0[i], P0[i], D0[i] = HV[i, 0], PV[i, 0], DV[i, 0]
+    return H0, P0, HV, PV, D0, DV
+
+
+def match_group(i, js, G, t):
+    """分組用：i 的任一變體與 js 的原圖近重複（pHash<=t 且 r>=R_T）。不套用低對比度排除。"""
+    H0, P0, HV, PV, D0, DV = G
+    js = np.asarray(js, dtype=int)
+    ok = np.zeros(len(js), dtype=bool)
+    for k in range(HV.shape[1]):
+        idx = np.nonzero((popcount(H0[js] ^ HV[i, k]) <= t) | (popcount(D0[js] ^ DV[i, k]) <= t))[0]
+        if len(idx):
+            rr = (P0[js[idx]] @ PV[i, k]) / P0.shape[1]
+            ok[idx[rr >= R_T]] = True
+    return js[ok]
+
+
 def match(i, js, F, rot, t=PHASH_T):
     """i 與候選 js 中的近重複（rot=True 時 i 轉 90/180/270 度後也比對）。回傳匹配的 j。"""
     H, P, SD, HR, PR = F
@@ -236,7 +288,7 @@ def drop_dups(rows, F, stats):
     return keep
 
 
-def group_ids(rows, F):
+def group_ids(rows, G):
     parent = list(range(len(rows)))
 
     def find(i):
@@ -256,7 +308,7 @@ def group_ids(rows, F):
         if len(r["base"]) > 20:  # 通用檔名(pic0_jpg 等)不可據以合併
             union(i, by_name.setdefault(r["base"], i))
     for i in range(len(rows)):
-        for j in match(i, np.arange(i + 1, len(rows)), F, True, t=PHASH_T + 2):  # 分組較保守
+        for j in match_group(i, np.arange(len(rows)), G, PHASH_T + 2):  # 分組較保守
             union(i, int(j))
     return [find(i) for i in range(len(rows))]
 
@@ -294,7 +346,8 @@ def main():
     print("去重後:", len(rows), "樣本")
     for k, v in sorted(stats.items()):
         print(f"  {k}: {v}")
-    gid = group_ids(rows, F)
+    G = group_features(rows)
+    gid = group_ids(rows, G)
     print("群組數:", len(set(gid)), " 最大群組:", Counter(gid).most_common(1)[0][1])
     assign = split_groups(rows, gid)
 
