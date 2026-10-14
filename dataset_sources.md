@@ -7,7 +7,7 @@
 | litespy | litespy-l22hu | dog-skin-diseases | v1 | CC BY 4.0 | Dog-Skin-Diseases-1 | 1,274 |
 | smartdog | smartdog-f8su3 | dog-skin-disease-dataset-bzhug | v1 | CC BY 4.0 | Dog-Skin-Disease-Dataset-1 | 1,180 |
 | gabungan | research-on-health | gabungan-of798 | v1 | CC BY 4.0 | gabungan-1 | 2,004 |
-| smoky | Smoky（smoky） | dogs-skin-disease-manual | v2 | CC BY 4.0（API：project.license） | candidates/rf_smoky | 278 |
+| smoky | Smoky（smoky） | dogs-skin-disease-manual | v2（版本名稱 0.01，2025-03-10 產生，301 張，640×640，Stretch to；Universe 頁面僅此 1 個公開版本，2026-10-14 截圖確認） | CC BY 4.0（API：project.license；頁面亦標示 CC BY 4.0、by Smoky） | candidates/rf_smoky | 278 |
 
 改作：類別重新對映、依標註框裁切（padding 15%）、去重、重新切分。Smoky 的 `tumor` 類別（不在 7 類內）已丟棄。
 引用時需標示作者、授權連結（https://creativecommons.org/licenses/by/4.0/）與「已修改」。

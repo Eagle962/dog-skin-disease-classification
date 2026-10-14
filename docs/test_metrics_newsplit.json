@@ -1,0 +1,12 @@
+{
+  "model": "EfficientNet-B0 @224, new split, patience 15, best epoch index 38 (0-indexed; 39th epoch), stopped at epoch index 53 (54 epochs run)",
+  "test_n": 368, "test_groups": 162, "tta": "horizontal flip, mean softmax",
+  "accuracy": 0.7772, "correct": 286,
+  "macro_f1": 0.7731, "weighted_f1": 0.7781, "balanced_accuracy": 0.7751, "cohen_kappa": 0.7385,
+  "macro_auc_ovr": 0.9438,
+  "bootstrap_2000_seed42_image_level": {"accuracy_95ci": [0.7337, 0.8179], "macro_f1_95ci": [0.7254, 0.8127]},
+  "bootstrap_2000_seed42_group_level": {"accuracy_95ci": [0.6933, 0.8505], "macro_f1_95ci": [0.6734, 0.8345]},
+  "class_order": ["bacterial_dermatosis","dermatitis","dermatophytosis","flea_allergy_dermatitis","healthy","hypersensitivity_dermatitis","mange"],
+  "confusion_matrix_rows_true_cols_pred": [[39,0,4,9,0,1,0],[3,46,3,3,0,1,3],[4,8,40,2,0,0,2],[1,3,2,40,1,1,1],[4,1,7,0,60,1,0],[0,0,2,0,0,36,2],[1,4,1,1,2,4,25]],
+  "note": "Computed from test_predictions_probs_TTA.csv; group = group id in dataset_cc_by annotations. Group bootstrap resamples the 162 groups. Subset metrics (with/without copies) need the independent audit status file, which is not in this project folder."
+}
